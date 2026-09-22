@@ -31,75 +31,83 @@ export function buildProceduralHardware(): Hardware3DScene {
     });
   };
 
-  // Materials
+  // Premium Industrial Materials
   const pcbMaterial = new THREE.MeshStandardMaterial({
-    color: 0x0c281e, // Deep dark green FR4
-    roughness: 0.45,
+    color: 0x072217, // Deep dark green FR4
+    roughness: 0.35,
     metalness: 0.15
   });
 
   const goldPadMaterial = new THREE.MeshStandardMaterial({
-    color: 0xd4af37,
-    metalness: 0.85,
-    roughness: 0.25
+    color: 0xe5b838, // Real ENIG gold finish
+    metalness: 0.95,
+    roughness: 0.15
   });
 
   const casingOpaqueMat = new THREE.MeshStandardMaterial({
-    color: 0x111625, // Matte industrial charcoal navy
-    roughness: 0.6,
-    metalness: 0.3
+    color: 0x0f1422, // Matte industrial charcoal navy
+    roughness: 0.5,
+    metalness: 0.35
   });
 
   const casingLidMat = new THREE.MeshPhysicalMaterial({
-    color: 0x18243b,
-    roughness: 0.2,
-    metalness: 0.1,
-    transmission: 0.75, // Translucent smoky acrylic
-    thickness: 0.8,
+    color: 0x162238,
+    roughness: 0.12,
+    metalness: 0.08,
+    transmission: 0.78, // Translucent smoky acrylic
+    thickness: 1.0,
+    ior: 1.45,
     transparent: true,
-    opacity: 0.6
+    opacity: 0.58
   });
 
   const dinRailMat = new THREE.MeshStandardMaterial({
-    color: 0x8a929e, // Galvanized steel
-    metalness: 0.8,
-    roughness: 0.35
+    color: 0x94a3b8, // Brushed galvanized steel
+    metalness: 0.9,
+    roughness: 0.25
   });
 
   const copperMat = new THREE.MeshStandardMaterial({
-    color: 0xc87533,
-    metalness: 0.85,
-    roughness: 0.3
+    color: 0xd97736, // Vivid pure copper
+    metalness: 0.9,
+    roughness: 0.22
   });
 
   const terminalMat = new THREE.MeshStandardMaterial({
-    color: 0x222a38,
-    roughness: 0.7
-  });
-
-  const brassScrewMat = new THREE.MeshStandardMaterial({
-    color: 0xcc9933,
-    metalness: 0.9,
-    roughness: 0.2
-  });
-
-  const chipMat = new THREE.MeshStandardMaterial({
-    color: 0x0a0c10,
-    roughness: 0.5,
+    color: 0x1e2638,
+    roughness: 0.6,
     metalness: 0.2
   });
 
+  const brassScrewMat = new THREE.MeshStandardMaterial({
+    color: 0xdfab35,
+    metalness: 0.92,
+    roughness: 0.18
+  });
+
+  const silverContactMat = new THREE.MeshStandardMaterial({
+    color: 0xf1f5f9,
+    metalness: 0.96,
+    roughness: 0.12
+  });
+
+  const chipMat = new THREE.MeshStandardMaterial({
+    color: 0x0b0e14,
+    roughness: 0.38,
+    metalness: 0.25
+  });
+
   const silverShieldMat = new THREE.MeshStandardMaterial({
-    color: 0xd8dde6,
-    metalness: 0.88,
-    roughness: 0.22
+    color: 0xe2e8f0,
+    metalness: 0.92,
+    roughness: 0.18
   });
 
   // 1. BASE ENCLOSURE & DIN RAIL
   const enclosureGroup = new THREE.Group();
   rootGroup.add(enclosureGroup);
 
-  // Household Case Base
+  // Household Case Base with subtle rounded bevel feel
   const householdBaseGeo = new THREE.BoxGeometry(3.6, 0.4, 2.4);
   const householdBase = new THREE.Mesh(householdBaseGeo, casingOpaqueMat);
   householdBase.position.set(0, -0.2, 0);
@@ -134,13 +142,42 @@ export function buildProceduralHardware(): Hardware3DScene {
   pcbGroup.add(pcbMesh);
   registerExploded(pcbGroup, new THREE.Vector3(0, 0, 0));
 
+  // 4 PCB Standoff Brass Screws in corners
+  const standoffGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.09, 16);
+  const corners = [
+    [-1.48, -0.88],
+    [1.48, -0.88],
+    [-1.48, 0.88],
+    [1.48, 0.88]
+  ];
+  corners.forEach(([cx, cz]) => {
+    const screw = new THREE.Mesh(standoffGeo, silverShieldMat);
+    screw.position.set(cx, 0.05, cz);
+    pcbGroup.add(screw);
+
+    // Standoff pad ring
+    const ringGeo = new THREE.RingGeometry(0.065, 0.11, 16);
+    const ring = new THREE.Mesh(ringGeo, goldPadMaterial);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(cx, 0.085, cz);
+    pcbGroup.add(ring);
+  });
+
   // Decorative gold traces & silkscreen on PCB
-  const traceGeo = new THREE.BoxGeometry(2.8, 0.01, 0.04);
+  const traceGeo = new THREE.BoxGeometry(2.8, 0.01, 0.035);
   for (let i = -0.7; i <= 0.7; i += 0.35) {
     const trace = new THREE.Mesh(traceGeo, goldPadMaterial);
-    trace.position.set(0, 0.085, i);
+    trace.position.set(0, 0.082, i);
     pcbGroup.add(trace);
   }
+
+  // Cross bus traces
+  const crossTraceGeo = new THREE.BoxGeometry(0.035, 0.01, 1.6);
+  [-0.6, 0.0, 0.6].forEach(posX => {
+    const cTrace = new THREE.Mesh(crossTraceGeo, goldPadMaterial);
+    cTrace.position.set(posX, 0.082, 0);
+    pcbGroup.add(cTrace);
+  });
 
   // 3. TOP ENCLOSURE LID
   const topLidGeo = new THREE.BoxGeometry(3.6, 0.5, 2.4);
@@ -256,24 +293,51 @@ export function buildProceduralHardware(): Hardware3DScene {
   pcbGroup.add(vsGroup);
   registerExploded(vsGroup, new THREE.Vector3(0.1, 0.3, -0.2));
 
-  // E. Dedicated Energy Metering IC
+  // E. Dedicated Energy Metering IC (with silver pins)
   const meterGroup = new THREE.Group();
   meterGroup.position.set(0.1, 0.08, 0.0);
-  const meterGeo = new THREE.BoxGeometry(0.35, 0.1, 0.35);
+  const meterGeo = new THREE.BoxGeometry(0.36, 0.1, 0.36);
   const meterMesh = new THREE.Mesh(meterGeo, chipMat);
   meterMesh.position.set(0, 0.05, 0);
   meterGroup.add(meterMesh);
+
+  // Silver IC Pins for metering IC
+  const pinGeo = new THREE.BoxGeometry(0.04, 0.02, 0.08);
+  for (let p = -0.12; p <= 0.12; p += 0.06) {
+    const pinL = new THREE.Mesh(pinGeo, silverContactMat);
+    pinL.position.set(-0.2, 0.02, p);
+    meterGroup.add(pinL);
+    const pinR = new THREE.Mesh(pinGeo, silverContactMat);
+    pinR.position.set(0.2, 0.02, p);
+    meterGroup.add(pinR);
+  }
+
   tagComponent(meterGroup, 'metering_ic', 'Dedicated Energy Metering IC');
   pcbGroup.add(meterGroup);
   registerExploded(meterGroup, new THREE.Vector3(0.0, 0.35, 0.0));
 
-  // F. MCU / Edge AI Processor (with metal RF/EMI shield)
+  // F. MCU / Edge AI Processor (with metal RF/EMI shield + laser mark)
   const mcuGroup = new THREE.Group();
   mcuGroup.position.set(0.75, 0.08, 0.05);
-  const mcuGeo = new THREE.BoxGeometry(0.5, 0.14, 0.5);
+  const mcuGeo = new THREE.BoxGeometry(0.52, 0.14, 0.52);
   const mcuMesh = new THREE.Mesh(mcuGeo, silverShieldMat);
   mcuMesh.position.set(0, 0.07, 0);
+  mcuMesh.castShadow = true;
   mcuGroup.add(mcuMesh);
+
+  // Laser etched core chip die on shield top
+  const dieGeo = new THREE.BoxGeometry(0.32, 0.01, 0.32);
+  const dieMesh = new THREE.Mesh(dieGeo, chipMat);
+  dieMesh.position.set(0, 0.145, 0);
+  mcuGroup.add(dieMesh);
+
+  // Glowing micro AI activity indicator point on MCU
+  const mcuLedGeo = new THREE.SphereGeometry(0.025, 8, 8);
+  const mcuLedMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+  const mcuLed = new THREE.Mesh(mcuLedGeo, mcuLedMat);
+  mcuLed.position.set(0.18, 0.15, -0.18);
+  mcuGroup.add(mcuLed);
+
   tagComponent(mcuGroup, 'mcu_edge', 'MCU / Edge AI Processor');
   pcbGroup.add(mcuGroup);
   registerExploded(mcuGroup, new THREE.Vector3(0.25, 0.38, 0.05));
@@ -308,7 +372,7 @@ export function buildProceduralHardware(): Hardware3DScene {
   pcbGroup.add(tempGroup);
   registerExploded(tempGroup, new THREE.Vector3(0.15, 0.3, 0.25));
 
-  // I. Isolated Power Supply (Flyback Transformer + Cap)
+  // I. Isolated Power Supply (Flyback Transformer + Electrolytic Cap)
   const psGroup = new THREE.Group();
   psGroup.position.set(-0.85, 0.08, 0.55);
 
@@ -317,14 +381,28 @@ export function buildProceduralHardware(): Hardware3DScene {
   const transMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
   const transMesh = new THREE.Mesh(transGeo, transMat);
   transMesh.position.set(0, 0.2, 0);
+  transMesh.castShadow = true;
   psGroup.add(transMesh);
 
-  // Electrolytic capacitor cylinder
-  const capGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.35, 16);
-  const capMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.6, roughness: 0.3 });
+  // Copper flux band on transformer
+  const bandGeo = new THREE.BoxGeometry(0.46, 0.12, 0.46);
+  const bandMesh = new THREE.Mesh(bandGeo, copperMat);
+  bandMesh.position.set(0, 0.2, 0);
+  psGroup.add(bandMesh);
+
+  // Electrolytic capacitor cylinder with silver negative stripe
+  const capGeo = new THREE.CylinderGeometry(0.13, 0.13, 0.36, 16);
+  const capMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.7, roughness: 0.25 });
   const capMesh = new THREE.Mesh(capGeo, capMat);
   capMesh.position.set(0.3, 0.18, 0);
+  capMesh.castShadow = true;
   psGroup.add(capMesh);
+
+  // Cap aluminum top seal
+  const capTopGeo = new THREE.CylinderGeometry(0.128, 0.128, 0.02, 16);
+  const capTop = new THREE.Mesh(capTopGeo, silverShieldMat);
+  capTop.position.set(0.3, 0.36, 0);
+  psGroup.add(capTop);
 
   tagComponent(psGroup, 'power_supply', 'Isolated Switched-Mode Power Supply');
   pcbGroup.add(psGroup);
@@ -334,26 +412,28 @@ export function buildProceduralHardware(): Hardware3DScene {
   const relayGroup = new THREE.Group();
   relayGroup.position.set(0.95, 0.08, 0.55);
 
-  // Translucent relay housing
-  const relayCaseGeo = new THREE.BoxGeometry(0.55, 0.45, 0.45);
+  // Crystal clear transparent polycarbonate relay housing
+  const relayCaseGeo = new THREE.BoxGeometry(0.56, 0.46, 0.46);
   const relayCaseMat = new THREE.MeshPhysicalMaterial({
-    color: 0x64748b,
-    transmission: 0.8,
-    opacity: 0.7,
+    color: 0x94a3b8,
+    transmission: 0.88,
+    opacity: 0.45,
     transparent: true,
-    roughness: 0.15
+    roughness: 0.08,
+    ior: 1.52,
+    thickness: 0.6
   });
   const relayCase = new THREE.Mesh(relayCaseGeo, relayCaseMat);
   relayCase.position.set(0, 0.23, 0);
   relayGroup.add(relayCase);
 
-  // Copper coil spool inside relay
+  // Heavy copper electromagnetic coil spool inside relay
   const coilGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.28, 16);
   const coilMesh = new THREE.Mesh(coilGeo, copperMat);
   coilMesh.position.set(-0.12, 0.2, 0);
   relayGroup.add(coilMesh);
 
-  // Mechanical Moving Armature & Contacts
+  // Mechanical Moving Armature & Solid Silver Contacts
   const armatureGroup = new THREE.Group();
   armatureGroup.position.set(0.08, 0.12, 0);
 
@@ -363,11 +443,23 @@ export function buildProceduralHardware(): Hardware3DScene {
   armBlade.position.set(0, 0.14, 0);
   armatureGroup.add(armBlade);
 
-  // Fixed contact terminal
+  // Bright silver contact button on the tip
+  const contactTipGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.03, 12);
+  const contactTip = new THREE.Mesh(contactTipGeo, silverContactMat);
+  contactTip.rotation.z = Math.PI / 2;
+  contactTip.position.set(0.025, 0.26, 0);
+  armatureGroup.add(contactTip);
+
+  // Fixed contact terminal with silver mating pad
   const fixedContactGeo = new THREE.BoxGeometry(0.04, 0.15, 0.06);
   const fixedContact = new THREE.Mesh(fixedContactGeo, armBladeMat);
   fixedContact.position.set(0.16, 0.25, 0);
   relayGroup.add(fixedContact);
+
+  const fixedTip = new THREE.Mesh(contactTipGeo, silverContactMat);
+  fixedTip.rotation.z = Math.PI / 2;
+  fixedTip.position.set(0.14, 0.26, 0);
+  relayGroup.add(fixedTip);
 
   relayGroup.add(armatureGroup);
   tagComponent(relayGroup, 'relay_section', 'Deterministic Latching Contactor / Relay');

@@ -50,7 +50,7 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-industrial-950 text-slate-100 flex flex-col font-sans overflow-hidden select-none">
+    <div className="h-screen max-h-screen bg-industrial-950 text-slate-100 flex flex-col font-sans overflow-hidden">
       {/* Top Navigation */}
       <TopNav 
         onToggleSimulationDrawer={() => setIsSimulationDrawerOpen(!isSimulationDrawerOpen)}
@@ -70,9 +70,9 @@ const MainLayout: React.FC = () => {
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
         />
 
-        {/* Viewport Content Area */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 bg-tech-grid">
-          <div className="max-w-7xl mx-auto">
+        {/* Viewport Content Area - Fully Scrollable with comfortable bottom clearance */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-6 pb-32 bg-tech-grid scroll-smooth">
+          <div className="max-w-7xl mx-auto w-full">
             {renderActiveView()}
           </div>
         </main>

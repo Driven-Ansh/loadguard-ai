@@ -98,8 +98,8 @@ export const JudgeDemoModal: React.FC = () => {
   const currentStepData = STEPS[judgeDemoStep - 1];
 
   return (
-    <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 pointer-events-none">
-      <div className="w-full max-w-4xl bg-industrial-900/98 backdrop-blur-2xl border-2 border-amber-500/80 rounded-2xl shadow-glow-amber p-4 sm:p-5 pointer-events-auto select-none">
+    <div className="fixed inset-x-0 bottom-4 sm:bottom-6 z-50 flex justify-center px-4 pointer-events-none">
+      <div className="w-full max-w-4xl max-h-[85vh] overflow-y-auto bg-industrial-900/98 backdrop-blur-2xl border-2 border-amber-500/80 rounded-2xl shadow-glow-amber p-4 sm:p-5 pointer-events-auto">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <div className="flex items-center gap-2">

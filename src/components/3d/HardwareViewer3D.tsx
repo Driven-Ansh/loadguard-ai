@@ -35,6 +35,20 @@ export const HardwareViewer3D: React.FC<{ compact?: boolean }> = ({ compact = fa
   const hardwareSceneRef = useRef<Hardware3DScene | null>(null);
   const particlesRef = useRef<ParticleSystemController | null>(null);
 
+  // Mutable reference to current simulation state for 60fps render loop
+  const simStateRef = useRef({
+    flowMode,
+    isRelayOpen: protectionState.relayPosition === 'OPEN',
+    isAbnormal: explainableAlert.hasActiveAlert,
+    isCritical: protectionState.status === 'CRITICAL_PENDING' || protectionState.status === 'TRIPPED'
+  });
+  simStateRef.current = {
+    flowMode,
+    isRelayOpen: protectionState.relayPosition === 'OPEN',
+    isAbnormal: explainableAlert.hasActiveAlert,
+    isCritical: protectionState.status === 'CRITICAL_PENDING' || protectionState.status === 'TRIPPED'
+  };
+
   // Mouse interaction state
   const isDraggingRef = useRef<boolean>(false);
   const prevMouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -66,20 +80,76 @@ export const HardwareViewer3D: React.FC<{ compact?: boolean }> = ({ compact = fa
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+    // Studio 4-Point High-Tech Lighting Setup
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
     scene.add(ambientLight);
 
-    const mainLight = new THREE.DirectionalLight(0xe0f2fe, 2.2);
-    mainLight.position.set(4, 8, 5);
+    // Key Light (Crisp neutral with soft contact shadows)
+    const mainLight = new THREE.DirectionalLight(0xf8fafc, 2.4);
+    mainLight.position.set(4.5, 8, 5);
     mainLight.castShadow = true;
     mainLight.shadow.mapSize.width = 1024;
     mainLight.shadow.mapSize.height = 1024;
+    mainLight.shadow.bias = -0.001;
     scene.add(mainLight);
 
-    const blueBackLight = new THREE.DirectionalLight(0x00f0ff, 1.5);
-    blueBackLight.position.set(-5, -2, -4);
+    // Cool Slate/Cyan Fill Light
+    const fillLight = new THREE.DirectionalLight(0x0284c7, 1.4);
+    fillLight.position.set(-5, 4, -3);
+    scene.add(fillLight);
+
+    // Vivid Cyan Rim Backlight
+    const blueBackLight = new THREE.DirectionalLight(0x00f0ff, 1.8);
+    blueBackLight.position.set(-2, -3, -5);
     scene.add(blueBackLight);
+
+    // Point Glow above board for high-tech PCB trace illumination
+    const boardGlow = new THREE.PointLight(0x00f0ff, 1.2, 5);
+    boardGlow.position.set(0.2, 1.4, 0.2);
+    scene.add(boardGlow);
+
+    // Tech Turntable Pedestal
+    const pedestalGroup = new THREE.Group();
+    pedestalGroup.position.set(0, -0.46, 0);
+
+    // Dark circular base disc
+    const baseDiscGeo = new THREE.CylinderGeometry(2.6, 2.7, 0.08, 48);
+    const baseDiscMat = new THREE.MeshStandardMaterial({
+      color: 0x080d19,
+      roughness: 0.65,
+      metalness: 0.4
+    });
+    const baseDisc = new THREE.Mesh(baseDiscGeo, baseDiscMat);
+    baseDisc.receiveShadow = true;
+    pedestalGroup.add(baseDisc);
+
+    // Glowing cyan accent ring
+    const ringGeo = new THREE.RingGeometry(2.35, 2.44, 48);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0x00f0ff,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.45
+    });
+    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+    ringMesh.rotation.x = -Math.PI / 2;
+    ringMesh.position.y = 0.045;
+    pedestalGroup.add(ringMesh);
+
+    // Inner subtle grid ring
+    const innerRingGeo = new THREE.RingGeometry(1.6, 1.65, 36);
+    const innerRingMat = new THREE.MeshBasicMaterial({
+      color: 0x00a8ff,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.22
+    });
+    const innerRing = new THREE.Mesh(innerRingGeo, innerRingMat);
+    innerRing.rotation.x = -Math.PI / 2;
+    innerRing.position.y = 0.045;
+    pedestalGroup.add(innerRing);
+
+    scene.add(pedestalGroup);
 
     // Build Hardware & Particles
     const hardware = buildProceduralHardware();
@@ -215,12 +285,18 @@ export const HardwareViewer3D: React.FC<{ compact?: boolean }> = ({ compact = fa
 
     const animate = (time: number) => {
       animId = requestAnimationFrame(animate);
-      const delta = (time - lastTime) / 1000;
+      const delta = Math.min((time - lastTime) / 1000, 0.1);
       lastTime = time;
 
       if (autoRotate && !isDraggingRef.current) {
-        cameraOrbitRef.current.theta += delta * 0.25;
+        cameraOrbitRef.current.theta += delta * 0.22;
         updateCamPos();
+      }
+
+      // Update flow particles smoothly at full frame rate
+      if (particlesRef.current) {
+        const { flowMode, isRelayOpen, isAbnormal, isCritical } = simStateRef.current;
+        particlesRef.current.update(delta, flowMode, isRelayOpen, isAbnormal, isCritical);
       }
 
       // Render
@@ -302,19 +378,6 @@ export const HardwareViewer3D: React.FC<{ compact?: boolean }> = ({ compact = fa
       (leds.protectLed.material as THREE.MeshBasicMaterial).color.setHex(0x00e676);
     }
   }, [protectionState.status, explainableAlert.hasActiveAlert]);
-
-  // Update animated particles in tick interval
-  useEffect(() => {
-    const pInterval = setInterval(() => {
-      if (particlesRef.current) {
-        const isRelayOpen = protectionState.relayPosition === 'OPEN';
-        const isAbnormal = explainableAlert.hasActiveAlert;
-        const isCritical = protectionState.status === 'CRITICAL_PENDING' || protectionState.status === 'TRIPPED';
-        particlesRef.current.update(0.04, flowMode, isRelayOpen, isAbnormal, isCritical);
-      }
-    }, 40);
-    return () => clearInterval(pInterval);
-  }, [flowMode, protectionState.relayPosition, explainableAlert.hasActiveAlert, protectionState.status]);
 
   // Camera presets
   const setCameraPreset = (preset: 'ISO' | 'TOP' | 'FRONT' | 'RELAY') => {
